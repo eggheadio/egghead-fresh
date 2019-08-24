@@ -1,89 +1,102 @@
 import React from "react";
 import ReactDOM from "react-dom";
 import useDataApi from "use-data-api";
+const ReactMarkdown = require("react-markdown");
+
+const DAYS_BACK = 30;
+const POPULAR_COUNT = 10;
 
 function App() {
-  const [{ data, isLoading, isError }, doFetch] = useDataApi(
-    "https://egghead.io/api/v1/fresh",
-    null
+  const [{ data, isLoading }] = useDataApi(
+    `https://egghead.io/api/v1/fresh?d=${DAYS_BACK}&pop=${POPULAR_COUNT}`
   );
 
-  const { playlists = [], courses = [], lessons = [] } = data || {};
+  const {
+    playlists = [],
+    courses = [],
+    lessons = [],
+    podcasts = [],
+    popular_courses = []
+  } = data || {};
 
   console.log(data);
 
-  return (
-    <div className="App">
-      <h1>Playlists</h1>
-      {playlists.map(playlist => {
-        const { instructor } = playlist;
-        return (
-          <div key={playlist.slug}>
-            <div>
-              <a href={`https://egghead.io${playlist.path}`}>
-                {playlist.title}
-              </a>
-            </div>
-            <div>
-              <img
-                style={{ width: "50px", height: "50px" }}
-                alt={instructor.full_name}
-                src={instructor.avatar_url}
-              />
-              {instructor.full_name}
-            </div>
-            <div>{playlist.description}</div>
-          </div>
-        );
-      })}
-      <h1>Courses</h1>
-      {courses.map(course => {
-        const { instructor, square_cover_url } = course;
-        return (
-          <div key={course.slug}>
-            <div>
-              <a href={`https://egghead.io${course.path}`}>{course.title}</a>
-            </div>
-            <div>
-              <img
-                style={{ width: "50px", height: "50px" }}
-                alt={instructor.full_name}
-                src={instructor.avatar_url}
-              />
-              {instructor.full_name}
-            </div>
-            <div>
-              <img
-                style={{ width: "50px", height: "50px" }}
-                alt={course.title}
-                src={square_cover_url}
-              />
-            </div>
+  return isLoading ? (
+    <div>loading...</div>
+  ) : (
+    <>
+      <h1>What's up at egghead for the last {DAYS_BACK} days...</h1>
+      <Resources
+        title="Podcasts"
+        resources={podcasts}
+        getImage={podcast => podcast.image_url}
+        byLine={podcast => `hosted by ${podcast.contributors.join(",")}`}
+        getDescription={podcast => podcast.summary}
+      />
+      <Resources
+        title="New Courses"
+        resources={courses}
+        getImage={series => series.square_cover_url}
+        byLine={({ instructor }) => `by ${instructor.full_name}`}
+      />
+      <Resources
+        title="Instructor Playlists"
+        resources={playlists}
+        byLine={({ instructor }) => `by ${instructor.full_name}`}
+      />
+      <Resources
+        title="Lessons"
+        resources={lessons}
+        byLine={({ instructor }) => `by ${instructor.full_name}`}
+        getDescription={lesson => lesson.summary}
+      />
+      <Resources
+        title="Popular Courses"
+        resources={popular_courses}
+        getImage={series => series.square_cover_url}
+        byLine={({ instructor }) => `by ${instructor.full_name}`}
+      />
+    </>
+  );
+}
 
-            <div>{course.description}</div>
-          </div>
-        );
-      })}
-      <h1>Lessons</h1>
-      {lessons.map(lesson => {
-        const { instructor, image_480_url } = lesson;
-        return (
-          <div key={lesson.slug}>
-            <div>
-              <a href={`https://egghead.io${lesson.path}`}>{lesson.title}</a>
+function Resources({
+  title,
+  resources = [],
+  byLine,
+  getImage,
+  getDescription = resource => resource.description || ""
+}) {
+  return (
+    resources.length > 0 && (
+      <>
+        <h2>{title}</h2>
+        {resources.map(resource => {
+          return (
+            <div key={resource.slug}>
+              {getImage && (
+                <img
+                  style={{ width: "125px", height: "125px", padding: "25px" }}
+                  src={getImage(resource)}
+                  alt={resource.title}
+                />
+              )}
+              <h3>
+                <a href={`https://egghead.io${resource.path}`}>
+                  {resource.title}
+                </a>
+              </h3>
+              <div>
+                <em>{byLine(resource)}</em>
+              </div>
+              <div style={{ paddingTop: "10px" }}>
+                <ReactMarkdown source={getDescription(resource)} />
+              </div>
             </div>
-            <div>
-              <img
-                style={{ width: "50px", height: "50px" }}
-                alt={lesson.title}
-                src={image_480_url}
-              />
-            </div>
-            <div>{lesson.summary}</div>
-          </div>
-        );
-      })}
-    </div>
+          );
+        })}
+      </>
+    )
   );
 }
 
